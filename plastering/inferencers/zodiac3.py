@@ -55,8 +55,6 @@ def meta_code_tokenizer(metadata_type):
 def get_vectorizer(metadata_type):
     if metadata_type in ['BACnetUnit', 'BACnetType']:
         vectorizer = CountVectorizer(tokenizer=meta_code_tokenizer(metadata_type), lowercase=False)
-    elif metadata_type=='Numeric':
-        vectorizer= CountVectorizer()
     else:
         vectorizer = CountVectorizer(tokenizer=alphabet_tokenizer)
     return vectorizer
@@ -147,8 +145,6 @@ class ZodiacInterface(object):
             assert raw_point['metadata'], 'Raw metadata for {0} does not exist'.format(srcid)
             for metadata_type in self.valid_metadata_types:
                 raw_metadata[metadata_type][srcid] = raw_point.metadata.get(metadata_type, None)
-        
-        self.raw_metadata=raw_metadata
 
         self.total_bow = self.init_bow(self.total_srcids, raw_metadata)
         target_bow = self.get_sub_bow(self.target_srcids)
@@ -189,7 +185,7 @@ class ZodiacInterface(object):
         cluster_map = {}
         z = linkage(bow, metric='cityblock', method='complete')
         dists = list(set(z[:, 2]))
-        thresh = (dists[2] + dists[3]) / 2
+        thresh = (dists[3] + dists[4]) / 2
         self.logger.info('Threshold: {0}'.format(thresh))
         b = hier.fcluster(z, thresh, criterion='distance')
         assert bow.shape[0] == len(b)

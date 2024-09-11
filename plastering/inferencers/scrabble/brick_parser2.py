@@ -27,8 +27,10 @@ def get_prefixes(version):
 
 def get_schema_graph(version):
     if not schema_g:
-        schema_g.parse('/home/jbkoh/repo/Brick_jbkoh/dist/Brick.ttl', format='turtle')
-        schema_g.parse('/home/jbkoh/repo/Brick_jbkoh/dist/BrickFrame.ttl', format='turtle')
+        #schema_g.parse('/home/jbkoh/repo/Brick_jbkoh/dist/Brick.ttl', format='turtle')
+	    schema_g.parse('C:/Users/python/Desktop/Branches/master/plastering-master/brick/Brick_1_0_2.ttl', format='turtle')
+	    #schema_g.parse('/home/jbkoh/repo/Brick_jbkoh/dist/BrickFrame.ttl', format='turtle')
+	    schema_g.parse('C:/Users/python/Desktop/Branches/master/plastering-master/brick/BrickFrame_1_0_2.ttl', format='turtle')
         # TODO: Parameterize this or use an online link.
     return schema_g
 

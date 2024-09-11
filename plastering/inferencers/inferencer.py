@@ -47,6 +47,7 @@ class Inferencer(object):
                          framework_name='dummy_framework',
                          ui=None,
                          required_label_types=[POINT_TAGSET, FULL_PARSING, ALL_TAGSETS],
+                         #required_label_types=[POINT_TAGSET],
                          target_label_type=POINT_TAGSET,
                          pgid=None,
                          logging_configfile=None,

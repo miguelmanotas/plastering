@@ -40,7 +40,7 @@ def get_name_features(names):
 
 class active_learning():
 
-    def __init__(self, fold, rounds, n_cluster, fn, label, transfer_fn=[], transfer_label=[], pt_type=[]):
+    def __init__(self, fold, rounds, n_cluster, fn, fn_num,fn_dist, label, min, transfer_fn=[], transfer_label=[], pt_type=[]):
 
         self.fold = fold
         self.rounds = rounds
@@ -49,10 +49,14 @@ class active_learning():
         self.f1_macro_sum = [[] for i in range(self.rounds)] #acc per iter for each fold
 
         self.fn = fn
+        self.fn_num=fn_num
+        self.fn_dist=fn_dist
         self.label = label
+        self.min=min
 
         self.manual_effort=0
 
+        self.tao_vec=[]
         self.tao = 0
         self.alpha_ = 1
         self.p_idx = []
@@ -71,6 +75,7 @@ class active_learning():
 
         self.label_test=[]
         self.fn_test=[]
+        self.fn_num_test=[]
         self.pt_type=pt_type
 
     def update_model(self):
@@ -84,13 +89,14 @@ class active_learning():
         pair = list(itertools.combinations(self.labeled_set,2))
 
         for p in pair:
-
-            d = np.linalg.norm(self.fn[p[0]]-self.fn[p[1]])
+            #d = np.linalg.norm(self.fn[p[0]]-self.fn[p[1]])
+            d = np.linalg.norm(self.fn_dist[p[0]]-self.fn_dist[p[1]])
             if self.label[p[0]] != self.label[p[1]]:
                 dist_inter.append(d)
 
         try:
             self.tao = self.alpha_*min(dist_inter)/2 #set tao be the min(inter-class pair dist)/2
+            self.tao_vec.append(self.tao)
         except Exception as e:
             self.tao = self.tao
 
@@ -140,7 +146,8 @@ class active_learning():
         idx = 0
 
         for k,v in self.ex_id.items():
-            sub_pred[k] = self.clf.predict(self.fn[v]) #predict labels for cluster learning set
+            #sub_pred[k] = self.clf.predict(self.fn[v]) #predict labels for cluster learning set
+            sub_pred[k] = self.clf.predict(self.fn_num[v])
                                                     #predicts labels for all the items in all clusters
         #entropy-based cluster selection
         rank = []
@@ -179,13 +186,15 @@ class active_learning():
         return idx, c_idx
 
 
-    def get_pred_acc(self, fn_test, label_test):
+    def get_pred_acc(self, fn_num_test, label_test):
 
         if not self.p_idx:
             fn_train = self.fn[self.labeled_set]
+            fn_num_train = self.fn_num[self.labeled_set]
             label_train = self.label[self.labeled_set]
         else:
             fn_train = self.fn[np.hstack((self.labeled_set, self.p_idx))]
+            fn_num_train = self.fn_num[np.hstack((self.labeled_set, self.p_idx))]
             label_train = np.hstack((self.label[self.labeled_set], self.p_label))
 
         #TODO: test the case that leverages transfer
@@ -195,18 +204,24 @@ class active_learning():
 
         assert ( fn_train.shape[0] == len(label_train) )
 
-        self.clf.fit(fn_train, label_train)
-        fn_preds = self.clf.predict(fn_test)
+        #self.clf.fit(fn_train, label_train)
+        self.clf.fit(fn_num_train, label_train)
+        #fn_preds = self.clf.predict(fn_test)
+        fn_num_preds = self.clf.predict(fn_num_test)
 
-        acc = accuracy_score(label_test, fn_preds)
-        f1_micro = f1_score(label_test, fn_preds, average='micro')
-        f1_macro = f1_score(label_test, fn_preds, average='macro')
+        # acc = accuracy_score(label_test, fn_preds)
+        # f1_micro = f1_score(label_test, fn_preds, average='micro')
+        # f1_macro = f1_score(label_test, fn_preds, average='macro')
+        acc = accuracy_score(label_test, fn_num_preds)
+        f1_micro = f1_score(label_test, fn_num_preds, average='micro')
+        f1_macro = f1_score(label_test, fn_num_preds, average='macro')
 
         return acc, f1_micro, f1_macro
 
-    def plot_confusion_matrix2(self, label_test, fn_test, pt_type):
+    #def plot_confusion_matrix2(self, label_test, fn_test, pt_type):
+    def plot_confusion_matrix2(self, label_test, fn_num_test, pt_type):
 
-        fn_preds = self.clf.predict(fn_test)
+        fn_num_preds = self.clf.predict(fn_num_test)
 
         #cm_ = CM(label_test, fn_preds)
 
@@ -214,7 +229,7 @@ class active_learning():
 
         le.fit(pt_type)
 
-        fn_preds_inverted=le.inverse_transform(fn_preds).tolist()
+        fn_preds_inverted=le.inverse_transform(fn_num_preds).tolist()
 
         label_test_inverted=le.inverse_transform(label_test).tolist()
 
@@ -259,7 +274,7 @@ class active_learning():
 
     def run_CV(self):
 
-        kf = KFold(len(self.label), n_folds=self.fold, shuffle=True, random_state=42)
+        kf = KFold(len(self.label), n_folds=self.fold, shuffle=True)#, random_state=42)
         p_acc = [] #pseudo self.label acc
         self.kfold=kf
 
@@ -270,12 +285,17 @@ class active_learning():
                 counter_+=1
 
                 fn_test = self.fn[test]
+                fn_num_test = self.fn_num[test]
                 label_test = self.label[test]
 
                 fn_train = self.fn[train]
+                fn_num_train = self.fn_num[train]
                 c = KMeans(init='k-means++', n_clusters=self.cluster_num, n_init=10)
                 c.fit(fn_train)
+                self.c=c
                 dist = np.sort(c.transform(fn_train))
+                self.dist=dist
+                
 
                 ex = dd(list) #example id, distance to centroid
                 self.ex_id = dd(list) #example id for each C
@@ -302,7 +322,7 @@ class active_learning():
                     ctr += 1
                     
 
-                    if ctr < 3:
+                    if ctr < self.min:
                         continue
 
                     self.new_ex_id = idx
@@ -312,7 +332,8 @@ class active_learning():
                     self.update_pseudo_set()
 
                     try:
-                        acc, f1_micro, f1_macro = self.get_pred_acc(fn_test, label_test)
+                        #acc, f1_micro, f1_macro = self.get_pred_acc(fn_test, label_test)
+                        acc, f1_micro, f1_macro = self.get_pred_acc(fn_num_test, label_test)
                     except Exception as e:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -326,19 +347,24 @@ class active_learning():
 
                 cl_id = [] #track cluster id on each iter
                 ex_al = [] #track ex added on each iter
-                fn_test = self.fn[test]
-                self.fn_test=fn_test
+                #fn_test = self.fn[test]
+                fn_num_test = self.fn_num[test]
+                #self.fn_test=fn_test
+                self.fn_num_test=fn_num_test
                 label_test = self.label[test]
                 self.label_test=label_test
                 for rr in range(ctr, self.rounds):
 
                     if not self.p_idx:
-                        fn_train = self.fn[self.labeled_set]
+                        #fn_train = self.fn[self.labeled_set]
+                        fn_num_train = self.fn_num[self.labeled_set]
                         label_train = self.label[self.labeled_set]
                     else:
-                        fn_train = self.fn[np.hstack((self.labeled_set, self.p_idx))] #adding propagated labels
+                        #fn_train = self.fn[np.hstack((self.labeled_set, self.p_idx))] #adding propagated labels
+                        fn_num_train = self.fn_num[np.hstack((self.labeled_set, self.p_idx))] #adding propagated labels
                         label_train = np.hstack((self.label[self.labeled_set], self.p_label)) #and also labeled (taken labels)
-                    self.clf.fit(fn_train, label_train)
+                    #self.clf.fit(fn_train, label_train)
+                    self.clf.fit(fn_num_train, label_train)
 
                     try:
                         idx, c_idx = self.select_example()
@@ -360,7 +386,8 @@ class active_learning():
                     self.update_tao()
                     self.update_pseudo_set()
 
-                    acc, f1_micro, f1_macro = self.get_pred_acc(fn_test, label_test)
+                    #acc, f1_micro, f1_macro = self.get_pred_acc(fn_test, label_test)
+                    acc, f1_micro, f1_macro = self.get_pred_acc(fn_num_test, label_test)
                     self.acc_sum[rr].append(acc)
                     self.f1_micro_sum[rr].append(f1_micro)
                     self.f1_macro_sum[rr].append(f1_macro)
