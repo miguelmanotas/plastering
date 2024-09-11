@@ -21,26 +21,29 @@ def get_name_features(names):
     fn = cv.fit_transform(name).toarray()
     return fn
 
-
-class ActiveLearningInterface(Inferencer):
+@Inferencer()
+#class ActiveLearningInterface(Inferencer):
+class ActiveLearningInterface(object):
 
     def __init__(self,
                  target_building,
                  target_srcids,
+                 #folder,
                  fold,
-                 rounds,
+                 #rounds,
+                 #n_cluster,
                  pgid=None,
                  use_all_metadata=False,
-                 source_building=None
+                 source_building=None,
+                 **kwargs,
                  ):
-        super(ActiveLearningInterface, self).__init__(
-            target_building=target_building,
-            target_srcids=target_srcids,
-            pgid=None,
-        )
-
+        
+        #self.folds=folds
+        
+        self.required_label_types = [POINT_TAGSET]
         srcids = [point['srcid'] for point in query_labels(pgid=pgid, building=target_building)]
-        pt_type = [query_labels(pgid=pgid, srcid=srcid).firat().point_tagset for srcid in srcids]
+        pt_type = [query_labels(pgid=pgid, srcid=srcid).first().point_tagset for srcid in srcids]
+        self.gt=pt_type
         if use_all_metadata:
             pt_name = []
             for srcid in srcids:
@@ -58,6 +61,10 @@ class ActiveLearningInterface(Inferencer):
                        .metadata['VendorGivenName'] for srcid in srcids]
 
         fn = get_name_features(pt_name)
+        #j=[]
+        #for i in range(len(fn)):
+        #    j.append([2])
+        #fn=np.append(fn,j,axis=1)
 
         le = LE()
         try:
@@ -97,17 +104,29 @@ class ActiveLearningInterface(Inferencer):
         print ('running active learning by Hong on building %s'%target_building)
         print ('%d instances loaded'%len(pt_name))
 
+        self.fold=[]
+        self.rounds=[]
+        #self.n_cluster=n_cluster
+        self.fn=fn
+        self.label=label
+        self.transfer_fn=transfer_fn
+        self.transfer_label=transfer_label
+        self.min=[]
 
-        self.learner = active_learning(
-            fold,
-            rounds,
-            #2 * len( np.unique(label) ),
-            28,
-            fn,
-            label,
-            transfer_fn,
-            transfer_label
-        )
+
+        # self.learner = active_learning(
+        #     #fold=10,
+        #     fold=2,
+        #     #rounds=100,
+        #     rounds=rounds,
+        #     #2 * len( np.unique(label) ),
+        #     #n_cluster=28,
+        #     n_cluster=n_cluster,
+        #     fn=self.fn,
+        #     label=label,
+        #     transfer_fn=transfer_fn,
+        #     transfer_label=transfer_label
+        # )
 
 
     def example_set():
@@ -130,7 +149,7 @@ class ActiveLearningInterface(Inferencer):
     def update_model(self, srcid, cluster_id):
 
         self.learner.labeled_set.append(srcid)
-        self.learbner.new_ex_id = srcid
+        self.learner.new_ex_id = srcid
         self.learner.cluster_id = cluster_id
         self.learner.update_model()
 

@@ -91,7 +91,8 @@ class BuildingAdapterInterface(Inferencer):
                  target_building,
                  target_srcids,
                  source_buildings,
-                 pgid=pgid,
+                 #pgid=pgid,
+                 pgid=None,
                  config={},
                  load_from_file=1
                  ):

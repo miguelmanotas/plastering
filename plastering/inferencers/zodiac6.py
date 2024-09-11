@@ -89,6 +89,9 @@ class ZodiacInterface(object):
         self.required_label_types = [POINT_TAGSET]
         self.logger.info('Zodiac initiated')
 
+        self.z=[]
+        self.dists=[]
+
         self.cluster_map = []
 
         # init config file for Zodiac
@@ -162,8 +165,10 @@ class ZodiacInterface(object):
 
     def get_random_learning_srcids(self, sample_num):
         srcids = []
+        random.seed(42)
         random_cids = random.sample(self.cluster_map.keys(), sample_num)
         for c_id in random_cids:
+            random.seed(42)
             srcid = random.choice(self.cluster_map[c_id])
             srcids.append(srcid)
         return srcids
@@ -188,7 +193,9 @@ class ZodiacInterface(object):
     def create_cluster_map(self, bow, srcids):
         cluster_map = {}
         z = linkage(bow, metric='cityblock', method='complete')
+        self.z=z
         dists = list(set(z[:, 2]))
+        self.dists=dists
         thresh = (dists[2] + dists[3]) / 2
         self.logger.info('Threshold: {0}'.format(thresh))
         b = hier.fcluster(z, thresh, criterion='distance')
@@ -310,6 +317,7 @@ class ZodiacInterface(object):
         cids = list(set(cids))
         cluster_sizes = [len(self.cluster_map[cid]) for cid in cids]
         for cid in cids:
+            random.seed(42)
             new_srcids.append(random.choice(self.cluster_map[cid]))
         new_srcids = [row[1] for row in sorted(zip(cluster_sizes, new_srcids),
                                                reverse=True)]
@@ -387,6 +395,7 @@ class ZodiacInterface(object):
                     if looping_flag:
                         raise AlgorithmError(self, 'infinite loop found.')
                     test_flag = 2
+                    random.seed(42)
                     new_srcids.append(random.choice(cluster_srcids))
                     th_update_flag = False
                     #self.logger.info('srcid added')

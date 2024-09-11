@@ -59,7 +59,7 @@ class active_learning():
         self.p_label = []
         self.p_dist = dd()
 
-        self.clf = LinearSVC()
+        self.clf = LinearSVC(random_state=0)
         self.ex_id = dd(list)
         self.new_ex_id = 0
         self.cluster_num = n_cluster
@@ -201,6 +201,7 @@ class active_learning():
         acc = accuracy_score(label_test, fn_preds)
         f1_micro = f1_score(label_test, fn_preds, average='micro')
         f1_macro = f1_score(label_test, fn_preds, average='macro')
+        
 
         return acc, f1_micro, f1_macro
 
@@ -269,11 +270,11 @@ class active_learning():
             if counter_==0:
                 counter_+=1
 
-                fn_test = self.fn[test]
-                label_test = self.label[test]
+                fn_test = self.fn #[test]
+                label_test = self.label #[test]
 
-                fn_train = self.fn[train]
-                c = KMeans(init='k-means++', n_clusters=self.cluster_num, n_init=10)
+                fn_train = self.fn #[train]
+                c = KMeans(init='k-means++', n_clusters=self.cluster_num, n_init=10, random_state=42)
                 c.fit(fn_train)
                 dist = np.sort(c.transform(fn_train))
 
@@ -326,9 +327,9 @@ class active_learning():
 
                 cl_id = [] #track cluster id on each iter
                 ex_al = [] #track ex added on each iter
-                fn_test = self.fn[test]
+                fn_test = self.fn   #[test]
                 self.fn_test=fn_test
-                label_test = self.label[test]
+                label_test = self.label #[test]
                 self.label_test=label_test
                 for rr in range(ctr, self.rounds):
 

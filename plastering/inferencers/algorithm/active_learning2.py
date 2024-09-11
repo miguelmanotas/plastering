@@ -40,7 +40,7 @@ def get_name_features(names):
 
 class active_learning():
 
-    def __init__(self, fold, rounds, n_cluster, fn, label, transfer_fn=[], transfer_label=[], pt_type=[]):
+    def __init__(self, fold, rounds, n_cluster, fn, label, min, transfer_fn=[], transfer_label=[], pt_type=[]):
 
         self.fold = fold
         self.rounds = rounds
@@ -50,6 +50,7 @@ class active_learning():
 
         self.fn = fn
         self.label = label
+        self.min=min
 
         self.manual_effort=0
 
@@ -259,7 +260,7 @@ class active_learning():
 
     def run_CV(self):
 
-        kf = KFold(len(self.label), n_folds=self.fold, shuffle=True, random_state=42)
+        kf = KFold(len(self.label), n_folds=self.fold, shuffle=True)#, random_state=42)
         p_acc = [] #pseudo self.label acc
         self.kfold=kf
 
@@ -275,7 +276,10 @@ class active_learning():
                 fn_train = self.fn[train]
                 c = KMeans(init='k-means++', n_clusters=self.cluster_num, n_init=10)
                 c.fit(fn_train)
+                self.c=c
                 dist = np.sort(c.transform(fn_train))
+                self.dist=dist
+                
 
                 ex = dd(list) #example id, distance to centroid
                 self.ex_id = dd(list) #example id for each C
@@ -302,7 +306,7 @@ class active_learning():
                     ctr += 1
                     
 
-                    if ctr < 3:
+                    if ctr < self.min:
                         continue
 
                     self.new_ex_id = idx
